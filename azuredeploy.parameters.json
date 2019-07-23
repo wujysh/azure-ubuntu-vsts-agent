@@ -2,26 +2,32 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-      "vstsAccountURL": {
-        "value": "GEN-UNIQUE"
-      },
-      "vstsPAT": {
-        "value": "GEN-UNIQUE"
-      },
-      "vstsPoolName": {
-        "value": "default"
-      },
-      "vstsAgentName": {
-        "value": "ubuntu-agent-1"
-      },
-      "vstsAgentVersion": {
-        "value": "2.154.3"
-      },
-      "adminUsername": {
-        "value": "GEN-UNIQUE"
-      },
-      "adminPassword": {
-        "value": "GEN-PASSWORD"
-      }
+        "vstsAccountURL": {
+            "value": "GEN-UNIQUE"
+        },
+        "vstsPAT": {
+            "value": "GEN-UNIQUE"
+        },
+        "vstsPoolName": {
+            "value": "default"
+        },
+        "vstsAgentVersion": {
+            "value": "2.154.3"
+        },
+        "adminUsername": {
+            "value": "GEN-UNIQUE"
+        },
+        "adminPassword": {
+            "value": "GEN-PASSWORD"
+        },
+        "namePrefix": {
+            "value": "ubuntu-agent-"
+        },
+        "startingId": {
+            "value": 1
+        },
+        "numberOfInstances": {
+            "value": 1
+        }
     }
-  }
+}

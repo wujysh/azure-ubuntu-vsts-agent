@@ -2,211 +2,225 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-      "vstsAccountURL": {
-        "type": "string",
-        "metadata": {
-          "description": "Team Services Account URL (e.g. https://myaccount.visualstudio.com)"
+        "vstsAccountURL": {
+            "type": "string",
+            "metadata": {
+                "description": "Team Services Account URL (e.g. https://myaccount.visualstudio.com)"
+            }
+        },
+        "vstsPAT": {
+            "type": "string",
+            "metadata": {
+                "description": "Team Services PAT for user with build permissions"
+            }
+        },
+        "vstsPoolName": {
+            "type": "string",
+            "defaultValue": "default",
+            "metadata": {
+                "description": "Team Services Agent Pool Name"
+            }
+        },
+        "vstsAgentVersion": {
+            "type": "string",
+            "defaultValue": "2.154.3",
+            "metadata": {
+                "description": "Team Services Agent Version"
+            }
+        },
+        "vmSize": {
+            "type": "string",
+            "defaultValue": "Standard_D4s_v3",
+            "metadata": {
+                "description": "VM SKU"
+            }
+        },
+        "adminUsername": {
+            "type": "string",
+            "defaultValue": "vstsbuild",
+            "metadata": {
+                "description": "Linux VM User Account Name"
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Administrator Password"
+            }
+        },
+        "namePrefix": {
+            "type": "string",
+            "defaultValue": "ubuntu-agent-",
+            "metadata": {
+                "description": "Team Services Agent Name"
+            }
+        },
+        "startingId": {
+            "type": "int",
+            "defaultValue": 1,
+            "minValue": 1,
+            "maxValue": 100,
+            "metadata": {
+                "description": "ID of the first VM. VMs' name will be {vstsAgentNamePrefix}{startingId} ~ {vstsAgentNamePrefix}{startingId+numberOfInstances-1}."
+            }
+        },
+        "numberOfInstances": {
+            "type": "int",
+            "defaultValue": 1,
+            "minValue": 1,
+            "maxValue": 100,
+            "metadata": {
+                "description": "Number of VMs to deploy"
+            }
         }
-      },
-      "vstsPAT": {
-        "type": "string",
-        "metadata": {
-          "description": "Team Services PAT for user with build permissions"
-        }
-      },
-      "vstsPoolName": {
-        "type": "string",
-        "defaultValue": "default",
-        "metadata": {
-          "description": "Team Services Agent Pool Name"
-        }
-      },
-      "vstsAgentName": {
-        "type": "string",
-        "defaultValue": "ubuntu-agent-1",
-        "metadata": {
-          "description": "Team Services Agent Name"
-        }
-      },
-      "vstsAgentVersion": {
-        "type": "string",
-        "defaultValue": "2.154.3",
-        "metadata": {
-          "description": "Team Services Agent Version"
-        }
-      },
-      "vmSize": {
-        "type": "string",
-        "defaultValue": "Standard_D4s_v3",
-        "metadata": {
-          "description": "Linux VM SKU"
-        }
-      },
-      "adminUsername": {
-        "type": "string",
-        "defaultValue": "vstsbuild",
-        "metadata": {
-          "description": "Linux VM User Account Name"
-        }
-      },
-      "adminPassword": {
-        "type": "securestring",
-        "metadata": {
-          "description": "Administrator Password"
-        }
-      }
     },
     "variables": {
-      "imagePublisher": "Canonical",
-      "imageOffer": "UbuntuServer",
-      "imageSKU": "18.04-LTS",
-      "baseName": "[uniquestring(parameters('vstsAgentName'),resourceGroup().id,uniquestring(deployment().name))]",
-      "nicName": "[concat('nic',variables('baseName'))]",
-      "addressPrefix": "10.0.0.0/16",
-      "subnet1Name": "Subnet-1",
-      "subnet1Prefix": "10.0.0.0/24",
-      "publicIPAddressName": "[concat('ip',variables('baseName'))]",
-      "publicIPAddressType": "Dynamic",
-      "vmStorageAccountContainerName": "vhds",
-      "vmName": "[parameters('vstsAgentName')]",
-      "vmSize": "[parameters('vmSize')]",
-      "virtualNetworkName": "MyVNET",
-      "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
-      "storageAccountType": "Standard_LRS",
-      "storageAccountName": "[concat('storage',variables('baseName'))]",
-      "subnet1Ref": "[concat(variables('vnetID'),'/subnets/',variables('subnet1Name'))]"
+        "imagePublisher": "Canonical",
+        "imageOffer": "UbuntuServer",
+        "imageSKU": "18.04-LTS",
+        "virtualNetworkName": "MyVNET",
+        "addressPrefix": "10.0.0.0/16",
+        "subnet1Name": "Subnet-1",
+        "subnet1Prefix": "10.0.0.0/24",
+        "publicIPAddressType": "Dynamic",
+        "vmNamePrefix": "[parameters('namePrefix')]",
+        "vmIdRange": "[range(parameters('startingId'), parameters('numberOfInstances'))]"
     },
     "resources": [
-      {
-        "type": "Microsoft.Storage/storageAccounts",
-        "name": "[variables('StorageAccountName')]",
-        "apiVersion": "2016-01-01",
-        "location": "[resourceGroup().location]",
-        "sku": {
-          "name": "[variables('storageAccountType')]"
-        },
-        "kind": "Storage",
-        "properties": {}
-      },
-      {
-        "apiVersion": "2015-06-15",
-        "type": "Microsoft.Network/publicIPAddresses",
-        "name": "[variables('publicIPAddressName')]",
-        "location": "[resourceGroup().location]",
-        "properties": {
-          "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
-          "dnsSettings": {
-            "domainNameLabel": "[variables('vmName')]"
-          }
-        }
-      },
-      {
-        "apiVersion": "2015-05-01-preview",
-        "type": "Microsoft.Network/virtualNetworks",
-        "name": "[variables('virtualNetworkName')]",
-        "location": "[resourceGroup().location]",
-        "properties": {
-          "addressSpace": {
-            "addressPrefixes": [
-              "[variables('addressPrefix')]"
-            ]
-          },
-          "subnets": [
-            {
-              "name": "[variables('subnet1Name')]",
-              "properties": {
-                "addressPrefix": "[variables('subnet1Prefix')]"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "apiVersion": "2015-05-01-preview",
-        "type": "Microsoft.Network/networkInterfaces",
-        "name": "[variables('nicName')]",
-        "location": "[resourceGroup().location]",
-        "dependsOn": [
-          "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
-          "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
-        ],
-        "properties": {
-          "ipConfigurations": [
-            {
-              "name": "ipconfig1",
-              "properties": {
-                "privateIPAllocationMethod": "Dynamic",
-                "publicIPAddress": {
-                  "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
-                },
-                "subnet": {
-                  "id": "[variables('subnet1Ref')]"
-                }
-              }
-            }
-          ]
-        }
-      },
-      {
-        "apiVersion":  "2017-03-30",
-        "type": "Microsoft.Compute/virtualMachines",
-        "name": "[variables('vmName')]",
-        "location": "[resourceGroup().location]",
-        "dependsOn": [
-          "[concat('Microsoft.Storage/storageAccounts/', variables('StorageAccountName'))]",
-          "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
-        ],
-        "properties": {
-          "hardwareProfile": {
-            "vmSize": "[variables('vmSize')]"
-          },
-          "osProfile": {
-            "computerName": "[variables('vmName')]",
-            "adminUsername": "[parameters('adminUsername')]",
-            "adminPassword": "[parameters('adminPassword')]"
-          },
-          "storageProfile": {
-            "imageReference": {
-              "publisher": "[variables('imagePublisher')]",
-              "offer": "[variables('imageOffer')]",
-              "sku": "[variables('imageSKU')]",
-              "version": "latest"
+        {
+            "apiVersion": "2016-03-30",
+            "type": "Microsoft.Network/publicIPAddresses",
+            "name": "[concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()], '-pip1')]",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "PIPCopy",
+                "count": "[length(variables('vmIdRange'))]"
             },
-            "osDisk": {
-              "name": "[concat(variables('vmName'),'_OSDisk')]", 
-              "caching": "ReadWrite",
-              "createOption": "FromImage"
+            "properties": {
+                "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+                "dnsSettings": {
+                    "domainNameLabel": "[concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()])]"
+                }
             }
-          },
-          "networkProfile": {
-            "networkInterfaces": [
-              {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
-              }
+        },
+        {
+            "name": "[variables('virtualNetworkName')]",
+            "type": "Microsoft.Network/virtualNetworks",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2016-03-30",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('addressPrefix')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('subnet1Name')]",
+                        "properties": {
+                            "addressPrefix": "[variables('subnet1Prefix')]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()], '-nic1')]",
+            "apiVersion": "2016-03-30",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "NICCopy",
+                "count": "[length(variables('vmIdRange'))]"
+            },
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()], '-pip1'))]"
+                            },
+                            "subnet": {
+                                "id": "[concat(resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName')), '/subnets/', variables('subnet1Name'))]"
+                            }
+                        }
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()], '-pip1'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
             ]
-          }
-        }
-      },
-      {
-        "type": "Microsoft.Compute/virtualMachines/extensions",
-        "name": "[concat(variables('vmName'),'/newuserscript')]",
-        "apiVersion": "2015-05-01-preview",
-        "location": "[resourceGroup().location]",
-        "dependsOn": [
-          "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
-        ],
-        "properties": {
-          "publisher": "Microsoft.Azure.Extensions",
-          "type": "CustomScript",
-          "typeHandlerVersion": "2.0",
-          "autoUpgradeMinorVersion": true,
-          "settings": {
-            "fileUris": [
-              "https://raw.githubusercontent.com/wujysh/azure-ubuntu-vsts-agent/master/scripts/environment-install.sh"
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()])]",
+            "apiVersion": "2017-03-30",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "VMCopy",
+                "count": "[length(variables('vmIdRange'))]"
+            },
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('vmSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "[variables('imagePublisher')]",
+                        "offer": "[variables('imageOffer')]",
+                        "sku": "[variables('imageSKU')]",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "name": "[concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()])]",
+                        "createOption": "FromImage",
+                        "caching": "ReadWrite"
+                    }
+                },
+                "osProfile": {
+                    "computerName": "[concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()])]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()], '-nic1'))]"
+                        }
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()], '-nic1'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()], '/newuserscript')]",
+            "apiVersion": "2015-05-01-preview",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "VMExtCopy",
+                "count": "[length(variables('vmIdRange'))]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines/', concat(variables('vmNamePrefix'), variables('vmIdRange')[copyIndex()]))]"
             ],
-            "commandToExecute": "[concat('sh environment-install.sh',' ',parameters('vstsAccountURL'),' ',parameters('vstsPAT'),' ',parameters('vstsPoolName'),' ',parameters('vstsAgentName'),' ',parameters('adminUsername'),' ',parameters('vstsAgentVersion'))]"
-          }
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "https://raw.githubusercontent.com/wujysh/azure-ubuntu-vsts-agent/master/scripts/environment-install.sh"
+                    ],
+                    "commandToExecute": "[concat('sh environment-install.sh',' ',parameters('vstsAccountURL'),' ',parameters('vstsPAT'),' ',parameters('vstsPoolName'),' ',parameters('namePrefix'), copyIndex(1),' ',parameters('adminUsername'),' ',parameters('vstsAgentVersion'))]"
+                }
+            }
         }
-      }
     ]
-  }
+}
